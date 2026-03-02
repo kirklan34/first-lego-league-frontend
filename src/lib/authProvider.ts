@@ -26,7 +26,4 @@ export class ClientAuthStrategy implements AuthStrategy {
 }
 
 export const serverAuthProvider: AuthStrategy = new ServerAuthStrategy();
-
-export function clientAuthProvider(): AuthStrategy {
-  return new ClientAuthStrategy();
-}
+export const clientAuthProvider: AuthStrategy = new ClientAuthStrategy();

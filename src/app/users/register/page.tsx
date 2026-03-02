@@ -17,7 +17,7 @@ type FormValues = {
 };
 
 export default function RegistrationPage() {
-    const service = new UsersService(clientAuthProvider())
+    const service = new UsersService(clientAuthProvider)
     const {
         register,
         handleSubmit,

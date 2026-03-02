@@ -34,7 +34,7 @@ export default function LoginPage() {
             sameSite: "strict",
             httpOnly: false,
         });
-        const service = new UsersService(clientAuthProvider());
+        const service = new UsersService(clientAuthProvider);
         const user = await service.getCurrentUser();
         setUser(user);
     }
