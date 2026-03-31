@@ -4,6 +4,8 @@ import ErrorAlert from "@/app/components/error-alert";
 import EmptyState from "@/app/components/empty-state";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { ScientificProject } from "@/types/scientificProject";
+import Link from "next/link";
+import { buttonVariants } from "@/app/components/button";
 import { parseErrorMessage } from "@/types/errors";
 
 function ScientificProjectCard({ project, index }: Readonly<{ project: ScientificProject; index: number }>) {
@@ -44,6 +46,14 @@ export default async function ScientificProjectsPage() {
             eyebrow="Innovation project"
             title="Scientific Projects"
             description="Explore innovation projects linked to each FIRST LEGO League edition."
+            heroAside={
+                <Link
+                    href="/scientific-projects/new"
+                    className={buttonVariants({ variant: "default", size: "sm" })}
+                >
+                    New Project
+                </Link>
+            }
         >
             <div className="space-y-6">
                 <div className="space-y-3">
