@@ -1,13 +1,11 @@
 import type { AuthStrategy } from "@/lib/authProvider";
 import { ScientificProject } from "@/types/scientificProject";
-import { getHal, mergeHalArray } from "./halClient";
+import { fetchHalCollection } from "./halClient";
 
 export class ScientificProjectsService {
     constructor(private readonly authStrategy: AuthStrategy) {}
 
     async getScientificProjects(): Promise<ScientificProject[]> {
-        const resource = await getHal('/scientificProjects', this.authStrategy);
-        const embedded = resource.embeddedArray('scientificProjects') || [];
-        return mergeHalArray<ScientificProject>(embedded);
+        return fetchHalCollection<ScientificProject>('/scientificProjects', this.authStrategy, 'scientificProjects');
     }
 }

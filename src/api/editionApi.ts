@@ -1,27 +1,22 @@
 import type { AuthStrategy } from "@/lib/authProvider";
 import { Edition } from "@/types/edition";
 import { Team } from "@/types/team";
-import { getHal, mergeHal, mergeHalArray } from "./halClient";
+import { fetchHalCollection, fetchHalResource } from "./halClient";
 
 export class EditionsService {
     constructor(private readonly authStrategy: AuthStrategy) {}
 
     async getEditions(): Promise<Edition[]> {
-        const resource = await getHal('/editions', this.authStrategy);
-        const embedded = resource.embeddedArray('editions') || [];
-        return mergeHalArray<Edition>(embedded);
+        return fetchHalCollection<Edition>('/editions', this.authStrategy, 'editions');
     }
 
     async getEditionById(id: string): Promise<Edition> {
         const editionId = encodeURIComponent(id);
-        const resource = await getHal(`/editions/${editionId}`, this.authStrategy);
-        return mergeHal<Edition>(resource);
+        return fetchHalResource<Edition>(`/editions/${editionId}`, this.authStrategy);
     }
 
     async getEditionTeams(id: string): Promise<Team[]> {
         const editionId = encodeURIComponent(id);
-        const resource = await getHal(`/editions/${editionId}/teams`, this.authStrategy);
-        const embedded = resource.embeddedArray('teams') || [];
-        return mergeHalArray<Team>(embedded);
+        return fetchHalCollection<Team>(`/editions/${editionId}/teams`, this.authStrategy, 'teams');
     }
 }

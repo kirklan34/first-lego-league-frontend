@@ -22,6 +22,83 @@ export function mergeHalArray<T>(objs: Resource[]): (T & Resource)[] {
 }
 
 /**
+ * Fetches a HAL collection and returns a merged array of resources
+ * @param path - API endpoint path
+ * @param authProvider - Authentication strategy
+ * @param embeddedKey - Key for embedded array in HAL response
+ */
+export async function fetchHalCollection<T>(
+    path: string,
+    authProvider: { getAuth: () => Promise<string | null> },
+    embeddedKey: string
+): Promise<(T & Resource)[]> {
+    const resource = await getHal(path, authProvider);
+    const embedded = resource.embeddedArray(embeddedKey) || [];
+    return mergeHalArray<T>(embedded);
+}
+
+/**
+ * Fetches a single HAL resource and returns it merged
+ * @param path - API endpoint path
+ * @param authProvider - Authentication strategy
+ */
+export async function fetchHalResource<T>(
+    path: string,
+    authProvider: { getAuth: () => Promise<string | null> }
+): Promise<T & Resource> {
+    const resource = await getHal(path, authProvider);
+    return mergeHal<T>(resource);
+}
+
+/**
+ * Creates a HAL resource via POST with null-check
+ * @param path - API endpoint path
+ * @param data - Resource data to create
+ * @param authProvider - Authentication strategy
+ * @param resourceName - Name of resource for error messages (lowercase)
+ */
+export async function createHalResource<T>(
+    path: string,
+    data: Resource,
+    authProvider: { getAuth: () => Promise<string | null> },
+    resourceName: string
+): Promise<T & Resource> {
+    const resource = await postHal(path, data, authProvider);
+    if (!resource) {
+        throw new ApiError(
+            `Failed to create ${resourceName}: No response from server`,
+            500,
+            true
+        );
+    }
+    return mergeHal<T>(resource);
+}
+
+/**
+ * Updates a HAL resource via PUT with null-check
+ * @param path - API endpoint path
+ * @param data - Resource data to update
+ * @param authProvider - Authentication strategy
+ * @param resourceName - Name of resource for error messages (lowercase)
+ */
+export async function updateHalResource<T>(
+    path: string,
+    data: Resource,
+    authProvider: { getAuth: () => Promise<string | null> },
+    resourceName: string
+): Promise<T & Resource> {
+    const resource = await putHal(path, data, authProvider);
+    if (!resource) {
+        throw new ApiError(
+            `Failed to update ${resourceName}: No response from server`,
+            500,
+            true
+        );
+    }
+    return mergeHal<T>(resource);
+}
+
+/**
  * Safely parses response body as HAL+JSON, returning null for 204 No Content responses
  */
 async function parseResponseBody(res: Response): Promise<Resource | null> {
