@@ -18,7 +18,14 @@ function getTeamTitle(team: Team | null, id: string) {
         return team.id;
     }
 
-    return `Team ${decodeURIComponent(id)}`;
+    let decodedId = id;
+    try {
+        decodedId = decodeURIComponent(id);
+    } catch {
+        // use raw id if decodeURIComponent fails
+    }
+
+    return `Team ${decodedId}`;
 }
 
 export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps>) {
@@ -52,7 +59,9 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         }
     }
 
-    const coachName = coaches.length > 0 ? coaches[0].username : "No coach assigned";
+    const coachName = coaches.length > 0 
+        ? (coaches[0].username ?? coaches[0].email ?? "Unnamed coach") 
+        : "No coach assigned";
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-zinc-50">
