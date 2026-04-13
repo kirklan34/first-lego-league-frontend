@@ -13,7 +13,7 @@ export default function Navbar() {
         { href: "/", label: "Home" },
         { href: "/users", label: "Users", roles: ["ROLE_USER"] },
         { href: "/teams", label: "Teams" },
-        { href: "/editions", label: "Editions" },
+        { href: "/matches", label: "Matches" },
         { href: "/scientific-projects", label: "Scientific Projects" }
     ];
 
@@ -57,7 +57,7 @@ export default function Navbar() {
                         })}
                 </div>
 
-                <div className="order-2 lg:order-3">
+                <div className="order-2 flex items-end gap-3 lg:order-3">
                     <Loginbar />
                 </div>
             </div>
