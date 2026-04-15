@@ -100,7 +100,11 @@ export default function EditProfileForm({ userId, currentEmail }: EditProfileFor
                             maxLength: { value: 254, message: "Email must be 254 characters or fewer" },
                             validate: (value) => {
                                 if (!value) return true;
-                                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Invalid email address";
+                                if (/\s/.test(value)) return "Invalid email address";
+                                const parts = value.split("@");
+                                if (parts.length !== 2) return "Invalid email address";
+                                const [local, domain] = parts;
+                                if (!local || !domain || !domain.includes(".")) return "Invalid email address";
                                 return true;
                             },
                         })}
