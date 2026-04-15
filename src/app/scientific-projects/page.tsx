@@ -31,7 +31,9 @@ function ScientificProjectCard({ project, index }: Readonly<{ project: Scientifi
     );
 }
 
-export default async function ScientificProjectsPage({ searchParams }: Readonly<{ searchParams: Promise<Record<string, string>> }>) {
+type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function ScientificProjectsPage({ searchParams }: Readonly<{ searchParams: PageSearchParams }>) {
     let projects: ScientificProject[] = [];
     let error: string | null = null;
     const auth = await serverAuthProvider.getAuth();
@@ -39,7 +41,8 @@ export default async function ScientificProjectsPage({ searchParams }: Readonly<
 
     try {
         const params = await searchParams;
-        const year = params.year;
+        const yearParam = params.year;
+        const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
         const service = new ScientificProjectsService(serverAuthProvider);
 
         if (year) {

@@ -48,17 +48,20 @@ function EditionCard({ edition }: Readonly<{ edition: Edition }>) {
     );
 }
 
-export default async function EditionsPage({ searchParams }: Readonly<{ searchParams: Promise<Record<string, string>> }>) {
+type EditionsPageSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function EditionsPage({ searchParams }: Readonly<{ searchParams: EditionsPageSearchParams }>) {
     let editions: Edition[] = [];
     let error: string | null = null;
 
     try {
         const params = await searchParams;
-        const year = params.year;
+        const rawYear = params.year;
+        const year = Array.isArray(rawYear) ? rawYear[0] : rawYear;
         const service = new EditionsService(serverAuthProvider);
 
-        if (year) {
-            const edition = await service.getEditionByYear(year);
+        if (year?.trim()) {
+            const edition = await service.getEditionByYear(year.trim());
             editions = edition ? [edition] : [];
         } else {
             editions = await service.getEditions();

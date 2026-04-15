@@ -21,11 +21,7 @@ export default function Navbar() {
         { href: "/scientific-projects", label: "Scientific Projects" }
     ];
 
-    const showEditionSelector = [
-        "/teams",
-        "/editions",
-        "/scientific-projects"
-    ].some((path) => pathname.startsWith(path));
+
 
     return (
         <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm">
@@ -73,11 +69,9 @@ export default function Navbar() {
                 </div>
 
                 <div className="order-2 flex items-center gap-3 lg:order-3">
-                    {showEditionSelector && (
-                        <Suspense fallback={null}>
-                            <EditionSelector />
-                        </Suspense>
-                    )}
+                    <Suspense fallback={null}>
+                        <EditionSelector />
+                    </Suspense>
                     <Loginbar />
                 </div>
             </div>

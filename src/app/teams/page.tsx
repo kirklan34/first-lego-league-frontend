@@ -59,13 +59,16 @@ function TeamCard({ team }: Readonly<{ team: Team }>) {
     );
 }
 
-export default async function TeamsPage({ searchParams }: Readonly<{ searchParams: Promise<Record<string, string>> }>) {
+type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function TeamsPage({ searchParams }: Readonly<{ searchParams: PageSearchParams }>) {
     let teams: Team[] = [];
     let error: string | null = null;
 
     try {
         const params = await searchParams;
-        const year = params.year;
+        const yearParam = params.year;
+        const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
         const service = new TeamsService(serverAuthProvider);
 
         if (year) {

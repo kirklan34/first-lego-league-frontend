@@ -16,8 +16,12 @@ export class EditionsService {
     }
 
     async getEditionByYear(year: string | number): Promise<Edition | null> {
-        const yearNum = typeof year === 'string' ? year : year.toString();
-        const editions = await fetchHalCollection<Edition>(`/editions/search/findByYear?year=${yearNum}`, this.authStrategy, 'editions');
+        const normalizedYear = encodeURIComponent(String(year));
+        const editions = await fetchHalCollection<Edition>(
+            `/editions/search/findByYear?year=${normalizedYear}`,
+            this.authStrategy,
+            'editions'
+        );
         return editions.length > 0 ? editions[0] : null;
     }
 

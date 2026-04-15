@@ -44,12 +44,20 @@ export default function EditionSelector() {
         router.push("?" + params.toString());
     };
 
-    if (loading || error) {
+    if (loading) {
         return null;
     }
 
-    if (editions.length === 0) {
-        return null;
+    if (error || editions.length === 0) {
+        return (
+            <select
+                disabled
+                className="border-input h-10 border bg-card px-3 py-2 text-sm opacity-70"
+                aria-label="Select edition"
+            >
+                <option>{error ? "Editions unavailable" : "No editions available"}</option>
+            </select>
+        );
     }
 
     return (
