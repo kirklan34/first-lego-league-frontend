@@ -8,8 +8,9 @@ export function AddMemberForm({ onSubmit, onCancel, isLoading }: any) {
     const [name, setName] = useState('');
     const [role, setRole] = useState(AVAILABLE_MEMBER_ROLES[0]);
 
-    const handleSubmit = async (e: any) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!name.trim()) return;
         await onSubmit(name, role);
         setName('');
     };

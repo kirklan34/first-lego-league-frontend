@@ -1,4 +1,5 @@
 import { TeamsService } from "@/api/teamApi";
+import { UsersService } from "@/api/userApi";
 import ErrorAlert from "@/app/components/error-alert";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { Team } from "@/types/team";
@@ -11,12 +12,8 @@ interface TeamDetailPageProps {
 }
 
 function getTeamTitle(team: Team | null, id: string) {
-    if (team?.name) {
-        return team.name;
-    }
-    if (team?.id) {
-        return team.id;
-    }
+    if (team?.name) return team.name;
+    if (team?.id) return team.id;
 
     try {
         return `Team ${decodeURIComponent(id)}`;
@@ -27,28 +24,33 @@ function getTeamTitle(team: Team | null, id: string) {
 
 export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps>) {
     const { id } = await props.params;
-    const service = new TeamsService(serverAuthProvider);
+
+    const teamService = new TeamsService(serverAuthProvider);
+    const userService = new UsersService(serverAuthProvider);
 
     let team: Team | null = null;
     let coaches: User[] = [];
     let members: User[] = [];
+    let currentUser: User | null = null;
+
     let error: string | null = null;
     let membersError: string | null = null;
 
     try {
-        team = await service.getTeamById(id);
+        team = await teamService.getTeamById(id);
     } catch (e) {
         console.error("Failed to fetch team:", e);
-        error = e instanceof NotFoundError 
-            ? "This team does not exist." 
-            : parseErrorMessage(e);
+        error =
+            e instanceof NotFoundError
+                ? "This team does not exist."
+                : parseErrorMessage(e);
     }
 
     if (team && !error) {
         try {
             [coaches, members] = await Promise.all([
-                service.getTeamCoach(id),
-                service.getTeamMembers(id)
+                teamService.getTeamCoach(id),
+                teamService.getTeamMembers(id),
             ]);
         } catch (e) {
             console.error("Failed to fetch team details:", e);
@@ -56,9 +58,29 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         }
     }
 
-    const coachName = coaches.length > 0 
-        ? (coaches[0].username ?? coaches[0].email ?? "Unnamed coach") 
-        : "No coach assigned";
+    try {
+        currentUser = await userService.getCurrentUser();
+    } catch {
+        currentUser = null;
+    }
+
+    const isAdmin =
+        currentUser?.authorities?.some(
+            (a: any) => a.authority === "ROLE_ADMIN"
+        ) ?? false;
+
+    const isCoach =
+        !!currentUser &&
+        coaches.some(
+            (c) =>
+                c.username === currentUser?.username ||
+                c.email === currentUser?.email
+        );
+
+    const coachName =
+        coaches.length > 0
+            ? coaches[0].username ?? coaches[0].email ?? "Unnamed coach"
+            : "No coach assigned";
 
     if (error) {
         return (
@@ -76,7 +98,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         <div className="flex min-h-screen items-center justify-center bg-zinc-50">
             <div className="w-full max-w-3xl px-4 py-10">
                 <div className="w-full rounded-lg border bg-white p-6 shadow-sm dark:bg-black">
-                    
+
                     <h1 className="mb-2 text-2xl font-semibold">
                         {getTeamTitle(team, id)}
                     </h1>
@@ -100,8 +122,8 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                         <TeamMembersManager
                             teamId={id}
                             members={members}
-                            isCoach={true}
-                            isAdmin={true}
+                            isCoach={isCoach}
+                            isAdmin={isAdmin}
                         />
                     )}
 

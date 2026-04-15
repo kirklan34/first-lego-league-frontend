@@ -37,12 +37,16 @@ export function useTeamMembers(teamId: string, initialMembers: User[]) {
         try {
             await service.removeTeamMember(memberId);
             setMembers(prev => prev.filter(m => m.uri !== memberId));
+            await service.removeTeamMember(teamId, memberId);
+            setMembers(prev => prev.filter(m => 
+                m.uri !== memberId && m._links?.self?.href !== memberId
+            ));
         } catch {
             setError('Failed to remove member');
         } finally {
             setIsLoading(false);
         }
-    }, [teamId]);
+    }, [teamId, service]);
 
     return {
         members,

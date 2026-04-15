@@ -7,7 +7,6 @@ import {
     createHalResource,
     deleteHal
 } from "./halClient";
-import { Resource } from "halfred";
 
 function getSafeEncodedId(id: string): string {
     try {
@@ -44,8 +43,9 @@ export class TeamsService {
     }
 
     async getTeamMembers(teamId: string): Promise<User[]> {
+        const safeId = getSafeEncodedId(teamId);
         return fetchHalCollection<User>(
-            `/teamMembers?team=/teams/${encodeURIComponent(teamId)}`,
+            `/teamMembers?team=/teams/${safeId}`,
             this.authStrategy,
             'teamMembers'
         );
@@ -57,7 +57,7 @@ export class TeamsService {
             {
                 ...data,
                 team: `/teams/${getSafeEncodedId(teamId)}`
-            } as unknown as Resource, // 🔥 FIX TypeScript
+            },
             this.authStrategy,
             'team member'
         );
