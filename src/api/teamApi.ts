@@ -1,7 +1,8 @@
 import type { AuthStrategy } from "@/lib/authProvider";
 import { Team } from "@/types/team";
+import type { HalPage } from "@/types/pagination";
 import { User } from "@/types/user";
-import { fetchHalCollection, fetchHalResource } from "./halClient";
+import { fetchHalCollection, fetchHalPagedCollection, fetchHalResource } from "./halClient";
 
 function getSafeEncodedId(id: string): string {
     try {
@@ -16,6 +17,10 @@ export class TeamsService {
 
     async getTeams(): Promise<Team[]> {
         return fetchHalCollection<Team>('/teams', this.authStrategy, 'teams');
+    }
+
+    async getTeamsPaged(page: number, size: number): Promise<HalPage<Team>> {
+        return fetchHalPagedCollection<Team>('/teams', this.authStrategy, 'teams', page, size);
     }
 
     async getTeamById(id: string): Promise<Team> {

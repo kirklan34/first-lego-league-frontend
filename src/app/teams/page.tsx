@@ -2,13 +2,17 @@ import { TeamsService } from "@/api/teamApi";
 import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
+import PaginationControls from "@/app/components/pagination-controls";
+import { getEncodedResourceId } from "@/lib/halRoute";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { ApiError, parseErrorMessage } from "@/types/errors";
+import type { HalPage } from "@/types/pagination";
 import { Team } from "@/types/team";
 import Link from "next/link";
-import { getEncodedResourceId } from "@/lib/halRoute";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 5;
 
 function getTeamDisplayName(team: Team) {
     return team.name ?? team.id ?? "Unnamed team";
@@ -60,17 +64,26 @@ function TeamCard({ team }: Readonly<{ team: Team }>) {
     );
 }
 
-export default async function TeamsPage() {
-    let teams: Team[] = [];
+interface TeamsPageProps {
+    readonly searchParams?: Promise<{ page?: string }>;
+}
+
+export default async function TeamsPage(props: Readonly<TeamsPageProps>) {
+    const searchParams = (await props.searchParams) ?? {};
+    const urlPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+
+    let result: HalPage<Team> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
 
     try {
         const service = new TeamsService(serverAuthProvider);
-        teams = await service.getTeams();
+        result = await service.getTeamsPaged(urlPage - 1, PAGE_SIZE);
     } catch (e) {
         console.error("Failed to fetch teams:", e);
         error = getTeamErrorMessage(e);
     }
+
+    const teams = result.items;
 
     return (
         <PageShell
@@ -97,23 +110,31 @@ export default async function TeamsPage() {
                 )}
 
                 {!error && teams.length > 0 && (
-                    <ul className="list-grid">
-                        {teams.map((team, index) => {
-                            const teamId = getEncodedResourceId(team.uri);
-                            const href = teamId ? `/teams/${teamId}` : null;
-                            return (
-                                <li key={getTeamKey(team, index)}>
-                                    {href ? (
-                                        <Link href={href} className="block h-full transition hover:bg-zinc-50 dark:hover:bg-zinc-900 group">
+                    <>
+                        <ul className="list-grid">
+                            {teams.map((team, index) => {
+                                const teamId = getEncodedResourceId(team.uri);
+                                const href = teamId ? `/teams/${teamId}` : null;
+                                return (
+                                    <li key={getTeamKey(team, index)}>
+                                        {href ? (
+                                            <Link href={href} className="block h-full transition hover:bg-zinc-50 dark:hover:bg-zinc-900 group">
+                                                <TeamCard team={team} />
+                                            </Link>
+                                        ) : (
                                             <TeamCard team={team} />
-                                        </Link>
-                                    ) : (
-                                        <TeamCard team={team} />
-                                    )}
-                                </li>
-                            );
-                        })}
-                    </ul>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                        <PaginationControls
+                            currentPage={urlPage}
+                            hasNext={result.hasNext}
+                            hasPrev={result.hasPrev}
+                            basePath="/teams"
+                        />
+                    </>
                 )}
             </div>
         </PageShell>

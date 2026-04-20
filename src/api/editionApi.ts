@@ -1,7 +1,8 @@
 import type { AuthStrategy } from "@/lib/authProvider";
 import { Edition } from "@/types/edition";
+import type { HalPage } from "@/types/pagination";
 import { Team } from "@/types/team";
-import { createHalResource, fetchHalCollection, fetchHalResource } from "./halClient";
+import { createHalResource, fetchHalCollection, fetchHalPagedCollection, fetchHalResource } from "./halClient";
 
 export type CreateEditionPayload = {
     year: number;
@@ -14,6 +15,10 @@ export class EditionsService {
 
     async getEditions(): Promise<Edition[]> {
         return fetchHalCollection<Edition>('/editions', this.authStrategy, 'editions');
+    }
+
+    async getEditionsPaged(page: number, size: number): Promise<HalPage<Edition>> {
+        return fetchHalPagedCollection<Edition>('/editions', this.authStrategy, 'editions', page, size);
     }
 
     async getEditionById(id: string): Promise<Edition> {

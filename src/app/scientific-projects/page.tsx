@@ -2,11 +2,17 @@ import { ScientificProjectsService } from "@/api/scientificProjectApi";
 import PageShell from "@/app/components/page-shell";
 import ErrorAlert from "@/app/components/error-alert";
 import EmptyState from "@/app/components/empty-state";
+import PaginationControls from "@/app/components/pagination-controls";
+import { buttonVariants } from "@/app/components/button";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { ScientificProject } from "@/types/scientificProject";
-import Link from "next/link";
-import { buttonVariants } from "@/app/components/button";
+import type { HalPage } from "@/types/pagination";
 import { parseErrorMessage } from "@/types/errors";
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 5;
 
 function ScientificProjectCard({ project, index }: Readonly<{ project: ScientificProject; index: number }>) {
     return (
@@ -29,20 +35,28 @@ function ScientificProjectCard({ project, index }: Readonly<{ project: Scientifi
     );
 }
 
-export default async function ScientificProjectsPage() {
-    let projects: ScientificProject[] = [];
+interface ScientificProjectsPageProps {
+    readonly searchParams?: Promise<{ page?: string }>;
+}
+
+export default async function ScientificProjectsPage(props: Readonly<ScientificProjectsPageProps>) {
+    const searchParams = (await props.searchParams) ?? {};
+    const urlPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+
+    let result: HalPage<ScientificProject> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
     const auth = await serverAuthProvider.getAuth();
     const isLoggedIn = !!auth;
 
-
     try {
         const service = new ScientificProjectsService(serverAuthProvider);
-        projects = await service.getScientificProjects();
+        result = await service.getScientificProjectsPaged(urlPage - 1, PAGE_SIZE);
     } catch (e) {
         console.error("Failed to fetch scientific projects:", e);
         error = parseErrorMessage(e);
     }
+
+    const projects = result.items;
 
     return (
         <PageShell
@@ -54,7 +68,6 @@ export default async function ScientificProjectsPage() {
                     New Project
                 </Link>
             ) : undefined}
-
         >
             <div className="space-y-6">
                 <div className="space-y-3">
@@ -75,13 +88,21 @@ export default async function ScientificProjectsPage() {
                 )}
 
                 {!error && projects.length > 0 && (
-                    <ul className="list-grid">
-                        {projects.map((project, index) => (
-                            <li key={project.uri ?? index}>
-                                <ScientificProjectCard project={project} index={index} />
-                            </li>
-                        ))}
-                    </ul>
+                    <>
+                        <ul className="list-grid">
+                            {projects.map((project, index) => (
+                                <li key={project.uri ?? index}>
+                                    <ScientificProjectCard project={project} index={index} />
+                                </li>
+                            ))}
+                        </ul>
+                        <PaginationControls
+                            currentPage={urlPage}
+                            hasNext={result.hasNext}
+                            hasPrev={result.hasPrev}
+                            basePath="/scientific-projects"
+                        />
+                    </>
                 )}
             </div>
         </PageShell>

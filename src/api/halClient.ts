@@ -6,6 +6,7 @@ import {
     ServerError,
     ValidationError,
 } from "@/types/errors";
+import type { HalPage } from "@/types/pagination";
 import halfred, { Resource } from "halfred";
 
 const PROD_API_BASE_URL = "https://api.firstlegoleague.win";
@@ -36,6 +37,34 @@ export async function fetchHalCollection<T>(
     const resource = await getHal(path, authProvider);
     const embedded = resource.embeddedArray(embeddedKey) || [];
     return mergeHalArray<T>(embedded);
+}
+
+/**
+ * Fetches a paginated HAL collection using ?page=N&size=N query parameters.
+ * Inspects _links.next and _links.prev to derive hasNext / hasPrev.
+ *
+ * @param path        - API endpoint path (without query params)
+ * @param authProvider - Authentication strategy
+ * @param embeddedKey - Key for embedded array in HAL response
+ * @param page        - 0-based page index
+ * @param size        - Page size
+ */
+export async function fetchHalPagedCollection<T>(
+    path: string,
+    authProvider: { getAuth: () => Promise<string | null> },
+    embeddedKey: string,
+    page: number,
+    size: number
+): Promise<HalPage<T & Resource>> {
+    const sep = path.includes("?") ? "&" : "?";
+    const resource = await getHal(`${path}${sep}page=${page}&size=${size}`, authProvider);
+    const items = mergeHalArray<T>(resource.embeddedArray(embeddedKey) || []);
+    return {
+        items,
+        hasNext: !!resource.link("next"),
+        hasPrev: !!resource.link("prev"),
+        currentPage: page,
+    };
 }
 
 /**

@@ -1,6 +1,7 @@
 import type { AuthStrategy } from "@/lib/authProvider";
+import type { HalPage } from "@/types/pagination";
 import { ScientificProject } from "@/types/scientificProject";
-import { getHal, mergeHal, mergeHalArray, postHal } from "./halClient";
+import { fetchHalPagedCollection, getHal, mergeHal, mergeHalArray, postHal } from "./halClient";
 
 export class ScientificProjectsService {
     constructor(private readonly authStrategy: AuthStrategy) { }
@@ -9,6 +10,12 @@ export class ScientificProjectsService {
         const resource = await getHal('/scientificProjects', this.authStrategy);
         const embedded = resource.embeddedArray('scientificProjects') || [];
         return mergeHalArray<ScientificProject>(embedded);
+    }
+
+    async getScientificProjectsPaged(page: number, size: number): Promise<HalPage<ScientificProject>> {
+        return fetchHalPagedCollection<ScientificProject>(
+            '/scientificProjects', this.authStrategy, 'scientificProjects', page, size
+        );
     }
 
     async createScientificProject(project: ScientificProject): Promise<ScientificProject> {

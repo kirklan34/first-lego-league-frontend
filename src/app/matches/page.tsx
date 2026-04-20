@@ -2,22 +2,23 @@ import { MatchesService } from "@/api/matchesApi";
 import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
+import PaginationControls from "@/app/components/pagination-controls";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { getEncodedResourceId } from "@/lib/halRoute";
 import { formatMatchTime } from "@/lib/matchUtils";
 import { parseErrorMessage } from "@/types/errors";
+import type { HalPage } from "@/types/pagination";
 import { Match } from "@/types/match";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 5;
+
 function getTeamsLabel(match: Match) {
     return `${match.teamA} vs ${match.teamB}`;
 }
 
-function compareMatchTimes(left: string = "", right: string = "") {
-    return left.localeCompare(right);
-}
 
 function getMatchKey(match: Match, index: number) {
     if (match.id !== undefined && match.id !== null) {
@@ -90,31 +91,26 @@ function getFriendlyMatchesError(error: unknown) {
     return `We could not load the matches. ${parsedMessage}`;
 }
 
-export default async function MatchesPage() {
-    let matches: Match[] = [];
+interface MatchesPageProps {
+    readonly searchParams?: Promise<{ page?: string }>;
+}
+
+export default async function MatchesPage(props: Readonly<MatchesPageProps>) {
+    const searchParams = (await props.searchParams) ?? {};
+    const urlPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+
+    let result: HalPage<Match> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
 
     try {
         const service = new MatchesService(serverAuthProvider);
-        const response = await service.getMatches();
-
-        matches = [...response].sort((left, right) => {
-            const startTimeDifference = compareMatchTimes(left.startTime, right.startTime);
-            if (startTimeDifference !== 0) {
-                return startTimeDifference;
-            }
-
-            const endTimeDifference = compareMatchTimes(left.endTime, right.endTime);
-            if (endTimeDifference !== 0) {
-                return endTimeDifference;
-            }
-
-            return String(left.id ?? "").localeCompare(String(right.id ?? ""));
-        });
+        result = await service.getMatchesPaged(urlPage - 1, PAGE_SIZE);
     } catch (fetchError) {
         console.error("Failed to fetch matches:", fetchError);
         error = getFriendlyMatchesError(fetchError);
     }
+
+    const matches = result.items;
 
     return (
         <PageShell
@@ -140,10 +136,13 @@ export default async function MatchesPage() {
 
                 {!error && matches.length > 0 && (
                     <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                            Showing {matches.length} match{matches.length === 1 ? "" : "es"} fetched from the backend.
-                        </p>
                         <MatchesTable matches={matches} />
+                        <PaginationControls
+                            currentPage={urlPage}
+                            hasNext={result.hasNext}
+                            hasPrev={result.hasPrev}
+                            basePath="/matches"
+                        />
                     </div>
                 )}
             </div>

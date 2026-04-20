@@ -1,6 +1,7 @@
 import type { AuthStrategy } from "@/lib/authProvider";
 import { User } from "@/types/user";
-import { fetchHalCollection, fetchHalResource, createHalResource, patchHal, mergeHal, deleteHal } from "./halClient";
+import { fetchHalCollection, fetchHalPagedCollection, fetchHalResource, createHalResource, patchHal, mergeHal, deleteHal } from "./halClient";
+import type { HalPage } from "@/types/pagination";
 import { Resource } from "halfred";
 import { ApiError } from "@/types/errors";
 
@@ -16,6 +17,10 @@ export class UsersService {
 
     async getUsers(): Promise<User[]> {
         return fetchHalCollection<User>('/users', this.authStrategy, 'users');
+    }
+
+    async getUsersPaged(page: number, size: number): Promise<HalPage<User>> {
+        return fetchHalPagedCollection<User>('/users', this.authStrategy, 'users', page, size);
     }
 
     async getUserById(id: string): Promise<User> {
