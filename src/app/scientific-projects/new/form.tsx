@@ -6,7 +6,7 @@ import { Label } from "@/app/components/label";
 import { Textarea } from "@/app/components/textarea";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { SubmitHandler, useForm } from "react-hook-form";
+import { SubmitHandler, useForm, useWatch } from "react-hook-form";
 import { createScientificProject } from "./actions";
 
 type Option = { label: string; value: string };
@@ -31,10 +31,10 @@ export default function NewScientificProjectForm({
     teamsPerEdition: Record<string, Option[]>;
 }>) {
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>();
+    const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>();
     const router = useRouter();
 
-    const watchedEdition = watch("edition");
+    const watchedEdition = useWatch({ control, name: "edition" });
     const visibleTeams = teamsPerEdition[watchedEdition] ?? [];
 
     useEffect(() => {

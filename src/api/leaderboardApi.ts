@@ -1,6 +1,5 @@
 import { API_BASE_URL } from "@/api/halClient";
 import type { AuthStrategy } from "@/lib/authProvider";
-import type { LeaderboardPageResponse } from "@/types/leaderboard";
 import {
     ApiError,
     AuthenticationError,
@@ -9,11 +8,12 @@ import {
     ServerError,
     ValidationError,
 } from "@/types/errors";
+import type { LeaderboardPageResponse } from "@/types/leaderboard";
 
 export class LeaderboardService {
     constructor(private readonly authStrategy: AuthStrategy) {}
 
-    async getEditionLeaderboard(editionId: string, page = 0, size = 20): Promise<LeaderboardPageResponse> {
+    public async getEditionLeaderboard(editionId: string, page = 0, size = 20): Promise<LeaderboardPageResponse> {
         if (!Number.isInteger(page) || page < 0) {
             throw new ValidationError("Page must be a non-negative integer.");
         }
@@ -49,7 +49,14 @@ export class LeaderboardService {
         }
 
         if (!res.ok) {
-            let errorMessage: string | undefined;
+            await this.handleError(res);
+        }
+
+        return res.json() as Promise<LeaderboardPageResponse>;
+    }
+
+    private async handleError(res: Response): Promise<never> {
+        let errorMessage: string | undefined;
             try {
                 const contentType = res.headers.get("content-type");
                 if (contentType?.toLowerCase().includes("json")) {
@@ -77,7 +84,4 @@ export class LeaderboardService {
                     throw new ApiError(errorMessage ?? "An error occurred. Please try again.", res.status, true);
             }
         }
-
-        return res.json() as Promise<LeaderboardPageResponse>;
-    }
 }

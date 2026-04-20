@@ -58,14 +58,15 @@ function EditionCard({ edition }: Readonly<{ edition: Edition }>) {
     );
 }
 
-interface EditionsPageProps {
-    readonly searchParams?: Promise<{ page?: string }>;
-}
+type EditionsPageSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export default async function EditionsPage(props: Readonly<EditionsPageProps>) {
-    const searchParams = (await props.searchParams) ?? {};
-    const urlPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+export default async function EditionsPage({ searchParams }: Readonly<{ searchParams: EditionsPageSearchParams }>) {
+    const params = await searchParams;
+    const rawYear = params.year;
+    const year = Array.isArray(rawYear) ? rawYear[0] : rawYear;
+    const urlPage = Math.max(1, Number(params.page ?? "1") || 1);
 
+    let editions: Edition[] = [];
     let result: HalPage<Edition> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
     let currentUser: User | null = null;
@@ -78,13 +79,18 @@ export default async function EditionsPage(props: Readonly<EditionsPageProps>) {
 
     try {
         const service = new EditionsService(serverAuthProvider);
-        result = await service.getEditionsPaged(urlPage - 1, PAGE_SIZE);
+
+        if (year?.trim()) {
+            const edition = await service.getEditionByYear(year.trim());
+            editions = edition ? [edition] : [];
+        } else {
+            result = await service.getEditionsPaged(urlPage - 1, PAGE_SIZE);
+            editions = result.items;
+        }
     } catch (e) {
         console.error("Failed to fetch editions:", e);
         error = parseErrorMessage(e);
     }
-
-    const editions = result.items;
 
     return (
         <PageShell
@@ -124,12 +130,14 @@ export default async function EditionsPage(props: Readonly<EditionsPageProps>) {
                                 </li>
                             ))}
                         </ul>
-                        <PaginationControls
-                            currentPage={urlPage}
-                            hasNext={result.hasNext}
-                            hasPrev={result.hasPrev}
-                            basePath="/editions"
-                        />
+                        {!year && (
+                            <PaginationControls
+                                currentPage={urlPage}
+                                hasNext={result.hasNext}
+                                hasPrev={result.hasPrev}
+                                basePath="/editions"
+                            />
+                        )}
                     </>
                 )}
             </div>

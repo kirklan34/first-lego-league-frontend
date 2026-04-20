@@ -26,6 +26,16 @@ export class EditionsService {
         return fetchHalResource<Edition>(`/editions/${editionId}`, this.authStrategy);
     }
 
+    async getEditionByYear(year: string | number): Promise<Edition | null> {
+        const normalizedYear = encodeURIComponent(String(year));
+        const editions = await fetchHalCollection<Edition>(
+            `/editions/search/findByYear?year=${normalizedYear}`,
+            this.authStrategy,
+            'editions'
+        );
+        return editions.length > 0 ? editions[0] : null;
+    }
+
     async getEditionTeams(id: string): Promise<Team[]> {
         const editionId = encodeURIComponent(id);
         return fetchHalCollection<Team>(`/editions/${editionId}/teams`, this.authStrategy, 'teams');

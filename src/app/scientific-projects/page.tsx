@@ -1,3 +1,4 @@
+import { EditionsService } from "@/api/editionApi";
 import { ScientificProjectsService } from "@/api/scientificProjectApi";
 import PageShell from "@/app/components/page-shell";
 import ErrorAlert from "@/app/components/error-alert";
@@ -5,6 +6,7 @@ import EmptyState from "@/app/components/empty-state";
 import PaginationControls from "@/app/components/pagination-controls";
 import { buttonVariants } from "@/app/components/button";
 import { serverAuthProvider } from "@/lib/authProvider";
+import { getEncodedResourceId } from "@/lib/halRoute";
 import { ScientificProject } from "@/types/scientificProject";
 import type { HalPage } from "@/types/pagination";
 import { parseErrorMessage } from "@/types/errors";
@@ -16,7 +18,7 @@ const PAGE_SIZE = 5;
 
 function ScientificProjectCard({ project, index }: Readonly<{ project: ScientificProject; index: number }>) {
     return (
-        <div className="list-card block h-full pl-7">
+        <div className="list-card block h-full pl-7 transition-colors hover:bg-secondary/30">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 space-y-2">
                     <div className="list-kicker">Scientific Project #{index + 1}</div>
@@ -35,14 +37,16 @@ function ScientificProjectCard({ project, index }: Readonly<{ project: Scientifi
     );
 }
 
-interface ScientificProjectsPageProps {
-    readonly searchParams?: Promise<{ page?: string }>;
-}
+type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export default async function ScientificProjectsPage(props: Readonly<ScientificProjectsPageProps>) {
-    const searchParams = (await props.searchParams) ?? {};
-    const urlPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+export default async function ScientificProjectsPage({ searchParams }: Readonly<{ searchParams: PageSearchParams }>) {
+    const params = await searchParams;
+    const yearParam = params.year;
+    const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
+    const yearQuery = year ? `?year=${year}` : "";
+    const urlPage = Math.max(1, Number(params.page ?? "1") || 1);
 
+    let projects: ScientificProject[] = [];
     let result: HalPage<ScientificProject> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
     const auth = await serverAuthProvider.getAuth();
@@ -50,13 +54,22 @@ export default async function ScientificProjectsPage(props: Readonly<ScientificP
 
     try {
         const service = new ScientificProjectsService(serverAuthProvider);
-        result = await service.getScientificProjectsPaged(urlPage - 1, PAGE_SIZE);
+
+        if (year) {
+            const editionsService = new EditionsService(serverAuthProvider);
+            const edition = await editionsService.getEditionByYear(year);
+            const editionId = edition?.uri ? getEncodedResourceId(edition.uri) : null;
+            if (editionId) {
+                projects = await service.getScientificProjectsByEdition(editionId);
+            }
+        } else {
+            result = await service.getScientificProjectsPaged(urlPage - 1, PAGE_SIZE);
+            projects = result.items;
+        }
     } catch (e) {
         console.error("Failed to fetch scientific projects:", e);
         error = parseErrorMessage(e);
     }
-
-    const projects = result.items;
 
     return (
         <PageShell
@@ -64,7 +77,7 @@ export default async function ScientificProjectsPage(props: Readonly<ScientificP
             title="Scientific Projects"
             description="Explore innovation projects linked to each FIRST LEGO League edition."
             heroAside={isLoggedIn ? (
-                <Link href="/scientific-projects/new" className={buttonVariants({ variant: "default", size: "sm" })}>
+                <Link href={`/scientific-projects/new${yearQuery}`} className={buttonVariants({ variant: "default", size: "sm" })}>
                     New Project
                 </Link>
             ) : undefined}
@@ -90,18 +103,28 @@ export default async function ScientificProjectsPage(props: Readonly<ScientificP
                 {!error && projects.length > 0 && (
                     <>
                         <ul className="list-grid">
-                            {projects.map((project, index) => (
-                                <li key={project.uri ?? index}>
-                                    <ScientificProjectCard project={project} index={index} />
-                                </li>
-                            ))}
+                            {projects.map((project, index) => {
+                                const projectId = getEncodedResourceId(project.uri);
+                                const card = <ScientificProjectCard project={project} index={index} />;
+                                return (
+                                    <li key={project.uri ?? index}>
+                                        {projectId ? (
+                                            <Link href={`/scientific-projects/${projectId}${yearQuery}`} className="block h-full">
+                                                {card}
+                                            </Link>
+                                        ) : card}
+                                    </li>
+                                );
+                            })}
                         </ul>
-                        <PaginationControls
-                            currentPage={urlPage}
-                            hasNext={result.hasNext}
-                            hasPrev={result.hasPrev}
-                            basePath="/scientific-projects"
-                        />
+                        {!year && (
+                            <PaginationControls
+                                currentPage={urlPage}
+                                hasNext={result.hasNext}
+                                hasPrev={result.hasPrev}
+                                basePath="/scientific-projects"
+                            />
+                        )}
                     </>
                 )}
             </div>

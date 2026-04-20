@@ -38,8 +38,8 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
         edition = await service.getEditionById(id);
     } catch (e) {
         console.error("Failed to fetch edition:", e);
-        error = e instanceof NotFoundError 
-            ? "This edition does not exist." 
+        error = e instanceof NotFoundError
+            ? "This edition does not exist."
             : parseErrorMessage(e);
     }
 
@@ -53,16 +53,16 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+        <div className="flex min-h-screen items-center justify-center bg-background">
             <div className="w-full max-w-3xl px-4 py-10">
-                <div className="w-full rounded-lg border bg-white p-6 shadow-sm dark:bg-black">
-                    <h1 className="mb-2 text-2xl font-semibold">{getEditionTitle(edition, id)}</h1>
-                    {edition?.venueName ? (
-                        <p className="text-sm text-zinc-600">{edition.venueName}</p>
-                    ) : null}
-                    {edition?.description ? (
-                        <p className="mt-2 text-sm text-zinc-600">{edition.description}</p>
-                    ) : null}
+                <div className="w-full rounded-lg border border-border bg-card p-6 shadow-sm">
+                    <h1 className="mb-2 text-2xl font-semibold text-foreground">{getEditionTitle(edition, id)}</h1>
+                    {edition?.venueName && (
+                        <p className="text-sm text-muted-foreground">{edition.venueName}</p>
+                    )}
+                    {edition?.description && (
+                        <p className="mt-2 text-sm text-muted-foreground">{edition.description}</p>
+                    )}
 
                     {error && (
                         <div className="mt-6">
@@ -72,11 +72,9 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
 
                     {!error && (
                         <>
-                            <h2 className="mt-8 mb-4 text-xl font-semibold">Participating Teams</h2>
+                            <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">Participating Teams</h2>
 
-                            {teamsError && (
-                                <ErrorAlert message={teamsError} />
-                            )}
+                            {teamsError && <ErrorAlert message={teamsError} />}
 
                             {!teamsError && teams.length === 0 && (
                                 <EmptyState
@@ -89,18 +87,17 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                                 <ul className="w-full space-y-3">
                                     {teams.map((team, index) => {
                                         const href = getTeamHref(team);
-
                                         return (
                                             <li
                                                 key={team.uri ?? index}
-                                                className="p-4 w-full border rounded-lg bg-white shadow-sm hover:shadow transition dark:bg-black"
+                                                className="w-full rounded-lg border border-border bg-card p-4 shadow-sm transition hover:bg-secondary/30"
                                             >
                                                 {href ? (
-                                                    <Link href={href} className="font-medium">
+                                                    <Link href={href} className="font-medium text-foreground">
                                                         {team.name ?? team.id ?? `Team ${index + 1}`}
                                                     </Link>
                                                 ) : (
-                                                    <span className="font-medium">
+                                                    <span className="font-medium text-foreground">
                                                         {team.name ?? team.id ?? `Team ${index + 1}`}
                                                     </span>
                                                 )}

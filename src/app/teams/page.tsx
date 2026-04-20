@@ -1,10 +1,11 @@
+import { EditionsService } from "@/api/editionApi";
 import { TeamsService } from "@/api/teamApi";
 import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import PaginationControls from "@/app/components/pagination-controls";
-import { getEncodedResourceId } from "@/lib/halRoute";
 import { serverAuthProvider } from "@/lib/authProvider";
+import { getEncodedResourceId } from "@/lib/halRoute";
 import { ApiError, parseErrorMessage } from "@/types/errors";
 import type { HalPage } from "@/types/pagination";
 import { Team } from "@/types/team";
@@ -64,26 +65,36 @@ function TeamCard({ team }: Readonly<{ team: Team }>) {
     );
 }
 
-interface TeamsPageProps {
-    readonly searchParams?: Promise<{ page?: string }>;
-}
+type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export default async function TeamsPage(props: Readonly<TeamsPageProps>) {
-    const searchParams = (await props.searchParams) ?? {};
-    const urlPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+export default async function TeamsPage({ searchParams }: Readonly<{ searchParams: PageSearchParams }>) {
+    const params = await searchParams;
+    const yearParam = params.year;
+    const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
+    const yearQuery = year ? `?year=${year}` : "";
+    const urlPage = Math.max(1, Number(params.page ?? "1") || 1);
 
+    let teams: Team[] = [];
     let result: HalPage<Team> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
 
     try {
         const service = new TeamsService(serverAuthProvider);
-        result = await service.getTeamsPaged(urlPage - 1, PAGE_SIZE);
+
+        if (year) {
+            const editionsService = new EditionsService(serverAuthProvider);
+            const edition = await editionsService.getEditionByYear(year);
+            if (edition?.uri) {
+                teams = await service.getTeamsByEdition(edition.uri + "/teams");
+            }
+        } else {
+            result = await service.getTeamsPaged(urlPage - 1, PAGE_SIZE);
+            teams = result.items;
+        }
     } catch (e) {
         console.error("Failed to fetch teams:", e);
         error = getTeamErrorMessage(e);
     }
-
-    const teams = result.items;
 
     return (
         <PageShell
@@ -114,7 +125,7 @@ export default async function TeamsPage(props: Readonly<TeamsPageProps>) {
                         <ul className="list-grid">
                             {teams.map((team, index) => {
                                 const teamId = getEncodedResourceId(team.uri);
-                                const href = teamId ? `/teams/${teamId}` : null;
+                                const href = teamId ? `/teams/${teamId}${yearQuery}` : null;
                                 return (
                                     <li key={getTeamKey(team, index)}>
                                         {href ? (
@@ -128,12 +139,14 @@ export default async function TeamsPage(props: Readonly<TeamsPageProps>) {
                                 );
                             })}
                         </ul>
-                        <PaginationControls
-                            currentPage={urlPage}
-                            hasNext={result.hasNext}
-                            hasPrev={result.hasPrev}
-                            basePath="/teams"
-                        />
+                        {!year && (
+                            <PaginationControls
+                                currentPage={urlPage}
+                                hasNext={result.hasNext}
+                                hasPrev={result.hasPrev}
+                                basePath="/teams"
+                            />
+                        )}
                     </>
                 )}
             </div>
