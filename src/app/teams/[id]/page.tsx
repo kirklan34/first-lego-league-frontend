@@ -1,8 +1,11 @@
 import { TeamsService } from "@/api/teamApi";
+import { ScientificProjectsService } from "@/api/scientificProjectApi";
 import { UsersService } from "@/api/userApi";
 import ErrorAlert from "@/app/components/error-alert";
 import EmptyState from "@/app/components/empty-state";
+import { ScientificProjectCardLink } from "@/app/components/scientific-project-card";
 import { serverAuthProvider } from "@/lib/authProvider";
+import { ScientificProject } from "@/types/scientificProject";
 import { Team } from "@/types/team";
 import { User } from "@/types/user";
 import { parseErrorMessage, NotFoundError } from "@/types/errors";
@@ -27,6 +30,14 @@ interface HalMemberResponse {
     _embedded?: {
         teamMembers: RawMember[];
     };
+}
+
+function getTeamDisplayName(team: Team | null): string | null {
+    if (!team) {
+        return null;
+    }
+
+    return team.name ?? team.id ?? null;
 }
 
 function extractTeamMembers(data: unknown): User[] {
@@ -56,14 +67,17 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     const { id } = await props.params;
 
     const service = new TeamsService(serverAuthProvider);
+    const scientificProjectsService = new ScientificProjectsService(serverAuthProvider);
     const userService = new UsersService(serverAuthProvider);
 
     let currentUser: User | null = null;
     let team: Team | null = null;
     let coaches: User[] = [];
     let members: User[] = [];
+    let scientificProjects: ScientificProject[] = [];
     let error: string | null = null;
     let membersError: string | null = null;
+    let scientificProjectsError: string | null = null;
 
     try {
         currentUser = await userService.getCurrentUser().catch(() => null);
@@ -75,18 +89,30 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         error = parseErrorMessage(e);
     }
 
+    const teamDisplayName = getTeamDisplayName(team);
+
     if (team && !error) {
-        try {
-            const [coachesData, membersData] = await Promise.all([
-                service.getTeamCoach(id),
-                service.getTeamMembers(id)
-            ]);
-            
+        const [membersResult, scientificProjectsResult] = await Promise.allSettled([
+            Promise.all([service.getTeamCoach(id), service.getTeamMembers(id)]),
+            teamDisplayName
+                ? scientificProjectsService.getScientificProjectsByTeamName(teamDisplayName)
+                : Promise.resolve([] as ScientificProject[])
+        ]);
+
+        if (membersResult.status === "fulfilled") {
+            const [coachesData, membersData] = membersResult.value;
             coaches = coachesData ?? [];
             members = extractTeamMembers(membersData);
-        } catch (e) {
-            console.error("Error loading members:", e);
-            membersError = parseErrorMessage(e);
+        } else {
+            console.error("Error loading members:", membersResult.reason);
+            membersError = parseErrorMessage(membersResult.reason);
+        }
+
+        if (scientificProjectsResult.status === "fulfilled") {
+            scientificProjects = scientificProjectsResult.value;
+        } else {
+            console.error("Error loading scientific projects:", scientificProjectsResult.reason);
+            scientificProjectsError = parseErrorMessage(scientificProjectsResult.reason);
         }
     }
 
@@ -109,12 +135,40 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         <div className="flex min-h-screen items-center justify-center bg-zinc-50">
             <div className="w-full max-w-3xl px-4 py-10">
                 <div className="w-full rounded-lg border bg-white p-6 shadow-sm dark:bg-black">
-                    <h1 className="mb-2 text-2xl font-semibold">{team.name}</h1>
+                    <h1 className="mb-2 text-2xl font-semibold">{teamDisplayName ?? "Unnamed team"}</h1>
 
                     <div className="mb-6 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
                         {team.city && <p><strong>City:</strong> {team.city}</p>}
                         <p><strong>Coach:</strong> {coachName}</p>
                     </div>
+
+                    <section aria-labelledby="team-projects-heading">
+                        <h2 id="team-projects-heading" className="mt-8 mb-4 text-xl font-semibold">
+                            Scientific Projects
+                        </h2>
+
+                        {scientificProjectsError && (
+                            <ErrorAlert message={`Could not load scientific projects. ${scientificProjectsError}`} />
+                        )}
+
+                        {!scientificProjectsError && scientificProjects.length === 0 && (
+                            <EmptyState
+                                title="No scientific projects yet"
+                                description="This team has not submitted any scientific projects."
+                                className="py-8"
+                            />
+                        )}
+
+                        {!scientificProjectsError && scientificProjects.length > 0 && (
+                            <ul className="space-y-3">
+                                {scientificProjects.map((project, index) => (
+                                    <li key={project.uri ?? project.link("self")?.href ?? index}>
+                                        <ScientificProjectCardLink project={project} index={index} variant="stacked" />
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </section>
 
                     <h2 className="mt-8 mb-4 text-xl font-semibold">Team Members</h2>
 

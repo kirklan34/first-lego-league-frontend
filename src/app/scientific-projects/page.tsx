@@ -2,33 +2,12 @@ import { ScientificProjectsService } from "@/api/scientificProjectApi";
 import PageShell from "@/app/components/page-shell";
 import ErrorAlert from "@/app/components/error-alert";
 import EmptyState from "@/app/components/empty-state";
+import { ScientificProjectCardLink } from "@/app/components/scientific-project-card";
 import { serverAuthProvider } from "@/lib/authProvider";
-import { getEncodedResourceId } from "@/lib/halRoute";
 import { ScientificProject } from "@/types/scientificProject";
 import Link from "next/link";
 import { buttonVariants } from "@/app/components/button";
 import { parseErrorMessage } from "@/types/errors";
-
-function ScientificProjectCard({ project, index }: Readonly<{ project: ScientificProject; index: number }>) {
-    return (
-        <div className="list-card block h-full pl-7 transition-colors hover:bg-secondary/30">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0 space-y-2">
-                    <div className="list-kicker">Scientific Project #{index + 1}</div>
-                    <div className="list-title">
-                        {project.comments ? project.comments : `Project ${index + 1}`}
-                    </div>
-                    {project.score !== undefined && project.score !== null && (
-                        <div className="list-support">Score: {project.score}</div>
-                    )}
-                </div>
-                {project.score !== undefined && project.score !== null && (
-                    <div className="status-badge">{project.score} pts</div>
-                )}
-            </div>
-        </div>
-    );
-}
 
 export default async function ScientificProjectsPage() {
     let projects: ScientificProject[] = [];
@@ -75,19 +54,11 @@ export default async function ScientificProjectsPage() {
 
                 {!error && projects.length > 0 && (
                     <ul className="list-grid">
-                        {projects.map((project, index) => {
-                            const projectId = getEncodedResourceId(project.uri);
-                            const card = <ScientificProjectCard project={project} index={index} />;
-                            return (
-                                <li key={project.uri ?? index}>
-                                    {projectId ? (
-                                        <Link href={`/scientific-projects/${projectId}`} className="block h-full">
-                                            {card}
-                                        </Link>
-                                    ) : card}
-                                </li>
-                            );
-                        })}
+                        {projects.map((project, index) => (
+                            <li key={project.uri ?? project.link("self")?.href ?? index}>
+                                <ScientificProjectCardLink project={project} index={index} />
+                            </li>
+                        ))}
                     </ul>
                 )}
             </div>
