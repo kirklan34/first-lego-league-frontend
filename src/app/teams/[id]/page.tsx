@@ -5,54 +5,11 @@ import ErrorAlert from "@/app/components/error-alert";
 import { TeamMembersManager } from "@/app/components/team-member-manager";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { NotFoundError, parseErrorMessage } from "@/types/errors";
-import { Team } from "@/types/team";
+import { Team, TeamCoach, TeamMember } from "@/types/team";
 import { User } from "@/types/user";
 
 interface TeamDetailPageProps {
     readonly params: Promise<{ id: string }>;
-}
-
-interface RawMember {
-    id?: string | number;
-    name?: string;
-    username?: string;
-    role?: string;
-    uri?: string;
-    _links?: {
-        self: { href: string };
-    };
-}
-
-interface HalMemberResponse {
-    _embedded?: {
-        teamMembers: RawMember[];
-    };
-}
-
-function extractTeamMembers(data: unknown): User[] {
-    const isHalResponse = (obj: unknown): obj is HalMemberResponse => {
-        return !!obj && typeof obj === 'object' && '_embedded' in obj;
-    };
-
-    let rawMembers: RawMember[] = [];
-    if (Array.isArray(data)) {
-        rawMembers = data as RawMember[];
-    } else if (isHalResponse(data)) {
-        rawMembers = data._embedded?.teamMembers ?? [];
-    } else {
-        rawMembers = [];
-    }
-
-    return rawMembers.map((m, index) => {
-        const extractedId = m._links?.self?.href?.split('/').pop() || m.uri?.split('/').pop();
-
-        return {
-            id: String(m.id ?? extractedId ?? `member-${index}`),
-            name: String(m.name ?? m.username ?? "Unnamed member"),
-            role: String(m.role ?? "Member"),
-            uri: String(m._links?.self?.href || m.uri || "")
-        } as unknown as User;
-    });
 }
 
 export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps>) {
@@ -63,8 +20,8 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
 
     let currentUser: User | null = null;
     let team: Team | null = null;
-    let coaches: User[] = [];
-    let members: User[] = [];
+    let coaches: TeamCoach[] = [];
+    let members: TeamMember[] = [];
     let error: string | null = null;
     let membersError: string | null = null;
 
@@ -86,7 +43,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
             ]);
 
             coaches = coachesData ?? [];
-            members = extractTeamMembers(membersData);
+            members = membersData ?? [];
         } catch (e) {
             console.error("Error loading members:", e);
             membersError = parseErrorMessage(e);
@@ -101,11 +58,12 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     );
 
     const isCoach = !!currentUser && coaches.some(
-        (c) => c.username === currentUser?.username || c.email === currentUser?.email
+        (coach) =>
+            coach.emailAddress === currentUser.email || coach.name === currentUser.username
     );
 
     const coachName = coaches.length > 0
-        ? (coaches[0].username ?? coaches[0].email ?? "Unnamed coach")
+        ? (coaches[0].name ?? coaches[0].emailAddress ?? "Unnamed coach")
         : "No coach assigned";
 
     return (

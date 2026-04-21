@@ -1,12 +1,16 @@
 import { EditionsService } from "@/api/editionApi";
 import { TeamsService } from "@/api/teamApi";
+import { UsersService } from "@/api/userApi";
+import { buttonVariants } from "@/app/components/button";
 import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { serverAuthProvider } from "@/lib/authProvider";
+import { isAdmin } from "@/lib/authz";
 import { getEncodedResourceId } from "@/lib/halRoute";
 import { ApiError, parseErrorMessage } from "@/types/errors";
 import { Team } from "@/types/team";
+import { User } from "@/types/user";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +71,13 @@ export default async function TeamsPage({ searchParams }: Readonly<{ searchParam
     let teams: Team[] = [];
     let error: string | null = null;
     let yearQuery = "";
+    let currentUser: User | null = null;
+
+    try {
+        currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
+    } catch {
+        currentUser = null;
+    }
 
     try {
         const params = await searchParams;
@@ -95,6 +106,11 @@ export default async function TeamsPage({ searchParams }: Readonly<{ searchParam
             eyebrow="Team management"
             title="Teams"
             description="Browse the teams currently registered in the FIRST LEGO League platform."
+            heroAside={isAdmin(currentUser) ? (
+                <Link href="/teams/new" className={buttonVariants({ variant: "default", size: "sm" })}>
+                    New Team
+                </Link>
+            ) : undefined}
         >
             <div className="space-y-6">
                 <div className="space-y-3">

@@ -2,14 +2,13 @@
 import { useState, useCallback, useMemo } from 'react';
 import { TeamsService } from '@/api/teamApi';
 import { clientAuthProvider } from '@/lib/authProvider';
-import { User } from '@/types/user';
-import { MAX_TEAM_MEMBERS } from '@/types/team';
+import { MAX_TEAM_MEMBERS, TeamMember } from '@/types/team';
 
-export function useTeamMembers(teamId: string, initialMembers: User[] = []) {
-    const [members, setMembers] = useState<User[]>(initialMembers);
+export function useTeamMembers(teamId: string, initialMembers: TeamMember[] = []) {
+    const [members, setMembers] = useState<TeamMember[]>(initialMembers);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [prevInitialMembers, setPrevInitialMembers] = useState<User[]>(initialMembers);
+    const [prevInitialMembers, setPrevInitialMembers] = useState<TeamMember[]>(initialMembers);
 
     if (initialMembers !== prevInitialMembers) {
         setPrevInitialMembers(initialMembers);
@@ -38,7 +37,7 @@ export function useTeamMembers(teamId: string, initialMembers: User[] = []) {
                     name,
                     role,
                 });
-                setMembers(prev => [...prev, newMember as unknown as User]);
+                setMembers(prev => [...prev, newMember]);
                 return true;
             } catch {
                 setError('Failed to add member');
@@ -55,8 +54,7 @@ export function useTeamMembers(teamId: string, initialMembers: User[] = []) {
             if (!memberUri) return;
             setMembers(prev =>
                 prev.filter(m => {
-                    const memberData = m as { _links?: { self: { href: string } }, uri?: string };
-                    const href = memberData._links?.self?.href || memberData.uri;
+                    const href = m.link("self")?.href || m.uri;
                     return href !== memberUri;
                 })
             );
