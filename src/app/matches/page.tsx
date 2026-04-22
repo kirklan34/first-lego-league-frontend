@@ -20,8 +20,9 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 5;
 
-function getTeamsLabel(match: Match) {
-    return `${match.teamA} vs ${match.teamB}`;
+function getTeamsLabel(match: Match, labels: Record<string, string>) {
+    const key = match.link("self")?.href ?? match.uri;
+    return labels[key] ?? "Unknown Team vs Unknown Team";
 }
 
 function getMatchKey(match: Match, index: number) {
@@ -40,7 +41,7 @@ function compareMatchTimes(left: string = "", right: string = "") {
     return left.localeCompare(right);
 }
 
-function MatchesTable({ matches, yearQuery }: Readonly<{ matches: Match[]; yearQuery: string }>) {
+function MatchesTable({ matches, labels, yearQuery }: Readonly<{ matches: Match[]; labels: Record<string, string>; yearQuery: string }>) {
     return (
         <div className="overflow-hidden border border-border">
             <div className="overflow-x-auto">
@@ -73,10 +74,10 @@ function MatchesTable({ matches, yearQuery }: Readonly<{ matches: Match[]; yearQ
                                                 href={`/matches/${matchId}${yearQuery}`}
                                                 className="hover:text-foreground hover:underline underline-offset-2"
                                             >
-                                                {getTeamsLabel(match)}
+                                                {getTeamsLabel(match, labels)}
                                             </Link>
                                         ) : (
-                                            getTeamsLabel(match)
+                                            getTeamsLabel(match, labels)
                                         )}
                                     </td>
                                 </tr>
@@ -109,6 +110,7 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
     const urlPage = Math.max(1, Number(params.page ?? "1") || 1);
 
     let matches: Match[] = [];
+    let matchLabels: Record<string, string> = {};
     let result: HalPage<Match> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
     let currentUser: User | null = null;
@@ -140,6 +142,45 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
             result = await service.getMatchesPaged(urlPage - 1, PAGE_SIZE);
             matches = result.items;
         }
+
+        const resolvedLabels = await Promise.all(matches.map(async (match) => {
+            const selfLink = match.link("self")?.href ?? match.uri;
+            const matchId = getEncodedResourceId(selfLink);
+            
+            if (!matchId) return { key: selfLink, label: "Unknown Team vs Unknown Team" };
+
+            let nameA = match.teamA;
+            let nameB = match.teamB;
+
+            try {
+                if (!nameA && match.link("teamA")) {
+                    const tA = await service.getMatchTeamA(decodeURIComponent(matchId));
+                    nameA = tA?.name ?? tA?.id ?? "Team A";
+                }
+            } catch (_e) {
+                nameA = "Team A";
+            }
+
+            try {
+                if (!nameB && match.link("teamB")) {
+                    const tB = await service.getMatchTeamB(decodeURIComponent(matchId));
+                    nameB = tB?.name ?? tB?.id ?? "Team B";
+                }
+            } catch (_e) {
+                nameB = "Team B";
+            }
+
+            return {
+                key: selfLink,
+                label: `${nameA ?? "Team A"} vs ${nameB ?? "Team B"}`
+            };
+        }));
+
+        matchLabels = resolvedLabels.reduce((acc, { key, label }) => {
+            acc[key] = label;
+            return acc;
+        }, {} as Record<string, string>);
+
     } catch (fetchError) {
         console.error("Failed to fetch matches:", fetchError);
         error = getFriendlyMatchesError(fetchError);
@@ -176,7 +217,7 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
 
                 {!error && matches.length > 0 && (
                     <div className="space-y-4">
-                        <MatchesTable matches={matches} yearQuery={yearQuery} />
+                        <MatchesTable matches={matches} labels={matchLabels} yearQuery={yearQuery} />
                         {!year && (
                             <PaginationControls
                                 currentPage={urlPage}
