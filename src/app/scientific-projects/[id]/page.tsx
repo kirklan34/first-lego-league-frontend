@@ -12,6 +12,8 @@ import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import { ScientificProject } from "@/types/scientificProject";
 import { Team } from "@/types/team";
 import { User } from "@/types/user";
+import { buttonVariants } from "@/app/components/button";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +80,11 @@ export default async function ScientificProjectDetailPage(props: Readonly<Scient
             eyebrow="Scientific Project"
             title={getProjectTitle(project, id)}
             description={project?.score !== undefined && project?.score !== null ? `Score: ${project.score} pts` : undefined}
+            heroAside={isAdmin(currentUser) && project ? (
+                <Link href={`/scientific-projects/${id}/edit`} className={buttonVariants({ variant: "default", size: "sm" })}>
+                    Edit
+                </Link>
+            ) : undefined}
         >
             {projectError && <ErrorAlert message={projectError} />}
 

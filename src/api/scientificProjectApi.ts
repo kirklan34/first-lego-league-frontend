@@ -49,6 +49,15 @@ export class ScientificProjectsService {
         return mergeHal<ScientificProject>(resource);
     }
 
+    async editScientificProjectInfo(
+        id: string,
+        data: { comments: string; team: string; edition: string }
+    ): Promise<ScientificProject | null> {
+        const projectId = encodeURIComponent(id);
+        const resource = await patchHal(`/scientificProjects/${projectId}`, data, this.authStrategy);
+        return resource ? mergeHal<ScientificProject>(resource) : null;
+    }
+
     async updateScientificProject(
         id: string,
         data: {
