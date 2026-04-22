@@ -3,6 +3,7 @@ import { UsersService } from "@/api/userApi";
 import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import { TeamMembersManager } from "@/app/components/team-member-manager";
+import TeamEditSection from "@/app/components/team-edit-section";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import { Team, TeamCoach, TeamMember, TeamMemberSnapshot } from "@/types/team";
@@ -51,7 +52,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         try {
             const [coachesData, membersData] = await Promise.all([
                 service.getTeamCoach(id),
-                service.getTeamMembers(id)
+                service.getTeamMembers(id),
             ]);
 
             coaches = coachesData ?? [];
@@ -70,14 +71,21 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     );
 
     const currentUserEmail = currentUser?.email?.trim().toLowerCase();
-    const isCoach = !!currentUserEmail && coaches.some(
-        (coach) => coach.emailAddress?.trim().toLowerCase() === currentUserEmail
-    );
 
-    const coachName = coaches.length > 0
-        ? (coaches[0].name ?? coaches[0].emailAddress ?? "Unnamed coach")
-        : "No coach assigned";
+    const isCoach =
+        !!currentUserEmail &&
+        coaches.some(
+            (coach) =>
+                coach.emailAddress?.trim().toLowerCase() === currentUserEmail
+        );
+
+    const coachName =
+        coaches.length > 0
+            ? coaches[0].name ?? coaches[0].emailAddress ?? "Unnamed coach"
+            : "No coach assigned";
+
     const initialMembers = members.map(toTeamMemberSnapshot);
+
     const membersKey = initialMembers
         .map((member) => member.uri ?? String(member.id ?? member.name ?? ""))
         .join("|");
@@ -86,14 +94,42 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         <div className="flex min-h-screen items-center justify-center bg-background">
             <div className="w-full max-w-3xl px-4 py-10">
                 <div className="w-full rounded-lg border border-border bg-card p-6 shadow-sm">
-                    <h1 className="mb-2 text-2xl font-semibold text-foreground">{team.name}</h1>
-
-                    <div className="mb-6 space-y-1 text-sm text-muted-foreground">
-                        {team.city && <p><strong>City:</strong> {team.city}</p>}
-                        <p><strong>Coach:</strong> {coachName}</p>
+                    <div className="flex items-start justify-between gap-4">
+                        <h1 className="mb-2 text-2xl font-semibold text-foreground">
+                            {team.name}
+                        </h1>
                     </div>
 
-                    <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">Team Members</h2>
+                    <div className="mb-6 space-y-1 text-sm text-muted-foreground">
+                        {team.city && (
+                            <p>
+                                <strong>City:</strong> {team.city}
+                            </p>
+                        )}
+                        <p>
+                            <strong>Coach:</strong> {coachName}
+                        </p>
+                    </div>
+
+                    {isAdmin && (
+                        <div className="mb-6 rounded-md border border-border p-4">
+                            <TeamEditSection
+                                team={{
+                                    id: team.id,
+                                    name: team.name,
+                                    city: team.city ?? undefined,
+                                    educationalCenter: team.educationalCenter ?? undefined,
+                                    category: team.category,
+                                    foundationYear: team.foundationYear,
+                                    inscriptionDate: team.inscriptionDate,
+                                }}
+                            />
+                        </div>
+                    )}
+
+                    <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">
+                        Team Members
+                    </h2>
 
                     {!membersError && (
                         <TeamMembersManager
@@ -104,6 +140,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                             isAdmin={isAdmin}
                         />
                     )}
+
                     {membersError && <ErrorAlert message={membersError} />}
                 </div>
             </div>

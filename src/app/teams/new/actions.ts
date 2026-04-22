@@ -422,3 +422,96 @@ export async function createTeam(data: CreateTeamFormPayload) {
 
     return "/teams";
 }
+export type UpdateTeamFormPayload = {
+    id: string;
+    name: string;
+    city?: string | null;
+    educationalCenter?: string | null;
+    category: string;
+    foundationYear?: number | null;
+    inscriptionDate?: string | null;
+};
+
+function validateUpdateTeamPayload(data: UpdateTeamFormPayload) {
+    const name = normalizeRequiredString(data.name, "Team name is required.");
+
+    const city = data.city?.toString().trim() || null;
+    const educationalCenter = data.educationalCenter?.toString().trim() || null;
+
+    const normalizedCategory = normalizeRequiredString(
+        data.category,
+        "Category is required."
+    ).toUpperCase();
+
+    if (!validTeamCategories.has(normalizedCategory)) {
+        throw new ValidationError("Please select a valid team category.");
+    }
+
+    let foundationYear: number | null = null;
+
+    if (data.foundationYear !== undefined && data.foundationYear !== null) {
+        foundationYear = Number(data.foundationYear);
+
+        if (Number.isNaN(foundationYear)) {
+            throw new ValidationError("Foundation year must be a valid number.");
+        }
+
+        if (foundationYear < 1998) {
+            throw new ValidationError("Foundation year must be 1998 or later.");
+        }
+    }
+
+    let inscriptionDate: string | null = null;
+
+    if (data.inscriptionDate) {
+        ensureIsoDate(data.inscriptionDate, "Invalid inscription date format.");
+        inscriptionDate = data.inscriptionDate;
+    }
+
+    return {
+        id: data.id,
+        name,
+        city,
+        educationalCenter,
+        category: normalizedCategory as TeamCategory,
+        foundationYear,
+        inscriptionDate,
+    };
+}
+
+export async function updateTeam(data: UpdateTeamFormPayload) {
+    const auth = await serverAuthProvider.getAuth();
+    if (!auth) {
+        throw new AuthenticationError();
+    }
+
+    const currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
+
+    if (!isAdmin(currentUser)) {
+        throw new AuthenticationError("You are not allowed to update teams.", 403);
+    }
+
+    const validated = validateUpdateTeamPayload(data);
+
+    const service = new TeamsService(serverAuthProvider);
+
+    const team = await service.getTeamById(validated.id);
+
+    if (!team) {
+        throw new ApiError("Team not found.", 404);
+    }
+
+    await service.updateTeam(validated.id, {
+        name: validated.name,
+        city: validated.city ?? undefined,
+        educationalCenter: validated.educationalCenter ?? undefined,
+        category: validated.category,
+        foundationYear: validated.foundationYear ?? undefined,
+        inscriptionDate: validated.inscriptionDate ?? undefined,
+    });
+
+    revalidatePath(`/teams/${validated.id}`);
+    revalidatePath("/teams");
+
+    return { success: true };
+}

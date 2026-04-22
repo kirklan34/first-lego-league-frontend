@@ -231,4 +231,67 @@ export class TeamsService {
     async removeTeamMember(memberUri: string): Promise<void> {
         await deleteHal(memberUri, this.authStrategy);
     }
+    async updateTeam(id: string, data: any): Promise<Team> {
+        const teamId = getSafeEncodedId(id);
+        const authorization = await this.authStrategy.getAuth();
+
+        let response: Response;
+
+        try {
+            response = await fetch(`${API_BASE_URL}/teams/${teamId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    ...(authorization ? { Authorization: authorization } : {}),
+                },
+                body: JSON.stringify(data),
+                cache: "no-store",
+            });
+        } catch (error) {
+            if (error instanceof TypeError) {
+                throw new NetworkError(undefined, error);
+            }
+            throw error;
+        }
+
+        if (!response.ok) {
+            let message: string | undefined;
+
+            try {
+                const contentType = response.headers.get("content-type");
+                if (contentType?.includes("json")) {
+                    const body = await response.json();
+                    message = body.message || body.error || body.detail;
+                }
+            } catch {
+                message = undefined;
+            }
+
+            switch (response.status) {
+                case 400:
+                    throw new ValidationError(message);
+                case 401:
+                case 403:
+                    throw new AuthenticationError(message, response.status);
+                case 404:
+                    throw new NotFoundError(message);
+                case 409:
+                    throw new ConflictError(message);
+                case 500:
+                case 502:
+                case 503:
+                case 504:
+                    throw new ServerError(message, response.status);
+                default:
+                    throw new ApiError(
+                        message ?? "Failed to update team.",
+                        response.status,
+                        true
+                    );
+            }
+        }
+
+        return response.json();
+    }
 }
