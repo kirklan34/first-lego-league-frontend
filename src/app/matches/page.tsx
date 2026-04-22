@@ -157,7 +157,8 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
                     const tA = await service.getMatchTeamA(decodeURIComponent(matchId));
                     nameA = tA?.name ?? tA?.id ?? nameA ?? "Team A";
                 }
-            } catch (_e) {
+            } catch (error) {
+                console.error(`Failed to fetch team A for match ${matchId}:`, error);
                 if (!nameA) nameA = "Team A";
             }
 
@@ -166,7 +167,8 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
                     const tB = await service.getMatchTeamB(decodeURIComponent(matchId));
                     nameB = tB?.name ?? tB?.id ?? nameB ?? "Team B";
                 }
-            } catch (_e) {
+            } catch (error) {
+                console.error(`Failed to fetch team B for match ${matchId}:`, error);
                 if (!nameB) nameB = "Team B";
             }
 
