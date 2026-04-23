@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/components/button';
 import { Input } from '@/app/components/input';
@@ -9,18 +9,19 @@ import { updateTeam } from '@/app/teams/new/actions';
 import { TEAM_CATEGORY_OPTIONS } from '@/types/team';
 
 interface TeamEditSectionProps {
-    team: {
-        id: string;
-        name: string;
-        city?: string;
-        educationalCenter?: string;
-        category?: string;
-        foundationYear?: number;
-        inscriptionDate?: string;
+    readonly team: {
+        readonly id: string;
+        readonly name: string;
+        readonly city?: string;
+        readonly educationalCenter?: string;
+        readonly category?: string;
+        readonly foundationYear?: number;
+        readonly inscriptionDate?: string;
     };
+    readonly isAdmin?: boolean;
 }
 
-export default function TeamEditSection({ team }: TeamEditSectionProps) {
+export default function TeamEditSection({ team, isAdmin = true }: TeamEditSectionProps) {
     const router = useRouter();
 
     const [isEditing, setIsEditing] = useState(false);
@@ -28,46 +29,48 @@ export default function TeamEditSection({ team }: TeamEditSectionProps) {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    // Helper para convertir FormDataEntryValue → string | null
-    const getString = (value: FormDataEntryValue | null) =>
-        value ? String(value) : null;
+    const [city, setCity] = useState(team.city ?? '');
+    const [educationalCenter, setEducationalCenter] = useState(team.educationalCenter ?? '');
+    const [category, setCategory] = useState(team.category ?? '');
+    const [foundationYear, setFoundationYear] = useState(team.foundationYear ?? '');
+    const [inscriptionDate, setInscriptionDate] = useState(team.inscriptionDate ?? '');
+
+    useEffect(() => {
+        setCity(team.city ?? '');
+        setEducationalCenter(team.educationalCenter ?? '');
+        setCategory(team.category ?? '');
+        setFoundationYear(team.foundationYear ?? '');
+        setInscriptionDate(team.inscriptionDate ?? '');
+    }, [team]);
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-
         if (isLoading) return;
 
         setIsLoading(true);
         setError(null);
 
         try {
-            const formData = new FormData(e.currentTarget);
-
             const payload = {
                 id: team.id,
-                name: String(formData.get('name') || ''),
-                city: getString(formData.get('city')),
-                educationalCenter: getString(formData.get('educationalCenter')),
-                category: String(formData.get('category') || ''),
-                foundationYear: formData.get('foundationYear')
-                    ? Number(formData.get('foundationYear'))
-                    : null,
-                inscriptionDate: getString(formData.get('inscriptionDate')),
+                name: team.name,
+                city: city.trim() || null,
+                educationalCenter: educationalCenter.trim() || null,
+                category,
+                foundationYear: foundationYear ? Number(foundationYear) : null,
+                inscriptionDate: inscriptionDate || null,
             };
 
             const result = await updateTeam(payload);
 
-            // 🔧 FIX: ya no accedemos a result.error porque no existe en el tipo
             if (!result?.success) {
                 throw new Error('Failed to update team.');
             }
 
-            router.refresh();
-
             setIsEditing(false);
             setSuccessMessage('Team updated successfully.');
-
             setTimeout(() => setSuccessMessage(null), 4000);
+            router.refresh();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred.');
         } finally {
@@ -83,101 +86,104 @@ export default function TeamEditSection({ team }: TeamEditSectionProps) {
                 </p>
             )}
 
-            {!isEditing ? (
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        setError(null);
-                        setIsEditing(true);
-                    }}
-                >
-                    Edit team
-                </Button>
-            ) : (
-                <form
-                    onSubmit={handleSubmit}
-                    className="rounded-lg border border-border bg-card p-5 shadow-sm"
-                >
-                    <h2 className="mb-4 text-lg font-semibold text-foreground">
-                        Edit team details
-                    </h2>
+            {isAdmin && (
+                isEditing ? (
+                    <form
+                        onSubmit={handleSubmit}
+                        className="rounded-lg border border-border bg-card p-5 shadow-sm"
+                    >
+                        <h2 className="mb-4 text-lg font-semibold text-foreground">
+                            Edit team details
+                        </h2>
 
-                    {error && (
-                        <p className="mb-4 border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                            {error}
-                        </p>
-                    )}
+                        {error && (
+                            <p className="mb-4 border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                                {error}
+                            </p>
+                        )}
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div className="grid gap-2">
-                            <Label>Name</Label>
-                            <Input name="name" defaultValue={team.name} required />
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label>Name</Label>
+                                <div className="flex h-11 w-full items-center rounded-md border border-input bg-card px-4 py-2 text-sm">
+                                    {team.id}
+                                </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label>Category</Label>
+                                <select
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    className="border-input h-11 w-full border bg-card px-4 py-2 text-sm"
+                                >
+                                    {TEAM_CATEGORY_OPTIONS.map((c) => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label>City</Label>
+                                <Input value={city} onChange={(e) => setCity(e.target.value)} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label>Educational center</Label>
+                                <Input
+                                    value={educationalCenter}
+                                    onChange={(e) => setEducationalCenter(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label>Foundation year</Label>
+                                <Input
+                                    type="number"
+                                    value={foundationYear}
+                                    onChange={(e) => setFoundationYear(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label>Inscription date</Label>
+                                <Input
+                                    type="date"
+                                    value={inscriptionDate}
+                                    onChange={(e) => setInscriptionDate(e.target.value)}
+                                />
+                            </div>
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label>Category</Label>
-                            <select
-                                name="category"
-                                defaultValue={team.category}
-                                className="border-input h-11 w-full border bg-card px-4 py-2 text-sm"
+                        <div className="mt-6 flex justify-end gap-3">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsEditing(false)}
+                                disabled={isLoading}
                             >
-                                {TEAM_CATEGORY_OPTIONS.map((c) => (
-                                    <option key={c} value={c}>
-                                        {c}
-                                    </option>
-                                ))}
-                            </select>
+                                Cancel
+                            </Button>
+
+                            <Button type="submit" size="sm" disabled={isLoading}>
+                                {isLoading ? 'Saving...' : 'Save changes'}
+                            </Button>
                         </div>
-
-                        <div className="grid gap-2">
-                            <Label>City</Label>
-                            <Input name="city" defaultValue={team.city ?? ''} />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label>Educational center</Label>
-                            <Input
-                                name="educationalCenter"
-                                defaultValue={team.educationalCenter ?? ''}
-                            />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label>Foundation year</Label>
-                            <Input
-                                name="foundationYear"
-                                type="number"
-                                defaultValue={team.foundationYear ?? ''}
-                            />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label>Inscription date</Label>
-                            <Input
-                                name="inscriptionDate"
-                                type="date"
-                                defaultValue={team.inscriptionDate ?? ''}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="mt-6 flex justify-end gap-3">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setIsEditing(false)}
-                            disabled={isLoading}
-                        >
-                            Cancel
-                        </Button>
-
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading ? 'Saving...' : 'Save changes'}
-                        </Button>
-                    </div>
-                </form>
+                    </form>
+                ) : (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            setError(null);
+                            setIsEditing(true);
+                        }}
+                    >
+                        Edit team
+                    </Button>
+                )
             )}
         </div>
     );

@@ -231,9 +231,16 @@ export class TeamsService {
     async removeTeamMember(memberUri: string): Promise<void> {
         await deleteHal(memberUri, this.authStrategy);
     }
-    async updateTeam(id: string, data: Partial<CreateTeamPayload>): Promise<Team>{
+    async updateTeam(id: string, data: Partial<CreateTeamPayload>): Promise<Team> {
         const teamId = getSafeEncodedId(id);
         const authorization = await this.authStrategy.getAuth();
+
+        const cleanedData: Partial<CreateTeamPayload> = {
+            ...data,
+            name: data.name?.trim(),
+            city: data.city?.trim() || undefined,
+            educationalCenter: data.educationalCenter?.trim() || undefined,
+        };
 
         let response: Response;
 
@@ -245,7 +252,7 @@ export class TeamsService {
                     Accept: "application/json",
                     ...(authorization ? { Authorization: authorization } : {}),
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify(cleanedData),
                 cache: "no-store",
             });
         } catch (error) {
@@ -292,6 +299,8 @@ export class TeamsService {
             }
         }
 
-        return response.json();
+        const result = await response.json();
+        console.log("UPDATE RESPONSE:", result);
+        return result;
     }
 }

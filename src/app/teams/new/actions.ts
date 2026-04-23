@@ -422,6 +422,7 @@ export async function createTeam(data: CreateTeamFormPayload) {
 
     return "/teams";
 }
+
 export type UpdateTeamFormPayload = {
     id: string;
     name: string;
@@ -433,17 +434,18 @@ export type UpdateTeamFormPayload = {
 };
 
 function validateUpdateTeamPayload(data: UpdateTeamFormPayload) {
-    const name = normalizeRequiredString(data.name, "Team name is required.");
+    // El name es opcional en actualización, usa el id como fallback
+    const name = data.name?.trim() || data.id;
 
     const city = data.city?.toString().trim() || null;
     const educationalCenter = data.educationalCenter?.toString().trim() || null;
 
-    const normalizedCategory = normalizeRequiredString(
-        data.category,
-        "Category is required."
-    ).toUpperCase();
+    const rawCategory = normalizeRequiredString(data.category, "Category is required.");
+    const matchedCategory = TEAM_CATEGORY_OPTIONS.find(
+        (c) => c.toUpperCase() === rawCategory.toUpperCase()
+    );
 
-    if (!validTeamCategories.has(normalizedCategory)) {
+    if (!matchedCategory) {
         throw new ValidationError("Please select a valid team category.");
     }
 
@@ -473,7 +475,7 @@ function validateUpdateTeamPayload(data: UpdateTeamFormPayload) {
         name,
         city,
         educationalCenter,
-        category: normalizedCategory as TeamCategory,
+        category: matchedCategory as TeamCategory,
         foundationYear,
         inscriptionDate,
     };
