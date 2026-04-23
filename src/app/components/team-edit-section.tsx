@@ -36,12 +36,15 @@ export default function TeamEditSection({ team, isAdmin = true }: TeamEditSectio
     const [inscriptionDate, setInscriptionDate] = useState(team.inscriptionDate ?? '');
 
     useEffect(() => {
-        setCity(team.city ?? '');
-        setEducationalCenter(team.educationalCenter ?? '');
-        setCategory(team.category ?? '');
-        setFoundationYear(team.foundationYear ?? '');
-        setInscriptionDate(team.inscriptionDate ?? '');
-    }, [team]);
+        // Inicializar estados cuando cambia el equipo
+        if (isEditing) {
+            setCity(team.city ?? '');
+            setEducationalCenter(team.educationalCenter ?? '');
+            setCategory(team.category ?? '');
+            setFoundationYear(team.foundationYear ?? '');
+            setInscriptionDate(team.inscriptionDate ?? '');
+        }
+    }, [team.id, isEditing]);
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -53,7 +56,7 @@ export default function TeamEditSection({ team, isAdmin = true }: TeamEditSectio
         try {
             const payload = {
                 id: team.id,
-                name: team.name,
+                name: team.name || team.id,
                 city: city.trim() || null,
                 educationalCenter: educationalCenter.trim() || null,
                 category,
